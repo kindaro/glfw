@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 
 struct point {int x; int y;};
-struct devices {GLFWwindow * window; VkInstance vulkan;};
+struct devices {GLFWwindow * window; VkInstance vulkan; VkSurfaceKHR surface;};
 
 void try (int code, const char * location)
 {
@@ -26,7 +26,7 @@ const struct devices enter (const struct point size)
 {
      struct devices devices;
      if (! glfwInit ( )) exit (-1);
-     /* glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API); */
+     glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API);
      glfwWindowHint (GLFW_RESIZABLE, GLFW_FALSE);
      devices.window = glfwCreateWindow (size.x, size.y, "Hello World", NULL, NULL);
      if (! devices.window)
@@ -50,7 +50,7 @@ const struct devices enter (const struct point size)
      checkGlfwError ("Query Vulkan extensions");
      for (int i = info.enabledExtensionCount - 1; i != 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
-
+     try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
      return devices;
 }
 
