@@ -15,6 +15,13 @@ void try (int code, const char * location)
      }
 }
 
+void checkGlfwError (const char * location)
+{
+     const char * message;
+     const int code = glfwGetError (&message);
+     if (code) printf ("GLFW error %X, %s in %s.\n", code, message, location);
+}
+
 const struct devices enter (const struct point size)
 {
      struct devices devices;
@@ -40,6 +47,8 @@ const struct devices enter (const struct point size)
            .ppEnabledExtensionNames = NULL,
           };
      info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions (&info.enabledExtensionCount);
+     checkGlfwError ("Query Vulkan extensions");
+     for (int i = info.enabledExtensionCount - 1; i != 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
 
      return devices;
