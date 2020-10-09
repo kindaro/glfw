@@ -2,11 +2,13 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
-GLFWwindow * initializeWindow ( )
+struct point {int x; int y;};
+
+GLFWwindow * initializeWindow (const struct point size)
 {
      GLFWwindow * window;
      if (! glfwInit ( )) exit (-1);
-     window = glfwCreateWindow (640, 480, "Hello World", NULL, NULL);
+     window = glfwCreateWindow (size.x, size.y, "Hello World", NULL, NULL);
      if (! window)
      {
           glfwTerminate ( );
@@ -30,8 +32,9 @@ void mainLoop (GLFWwindow * window)
 
 int main (void)
 {
+     const struct point size = {.x = 800, .y = 600};
      GLFWwindow * window;
-     window = initializeWindow ( );
+     window = initializeWindow (size);
      while (! glfwWindowShouldClose (window)) mainLoop (window);
      return leave ( );
 }
