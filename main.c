@@ -1,41 +1,63 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 struct point {int x; int y;};
+struct devices {GLFWwindow * window; VkInstance vulkan;};
 
-GLFWwindow * initializeWindow (const struct point size)
+void die (void)
 {
-     GLFWwindow * window;
+     fprintf (stderr, "An error occured");
+     exit (-1);
+}
+
+const struct devices enter (const struct point size)
+{
+     struct devices devices;
      if (! glfwInit ( )) exit (-1);
-     window = glfwCreateWindow (size.x, size.y, "Hello World", NULL, NULL);
-     if (! window)
+     /* glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API); */
+     glfwWindowHint (GLFW_RESIZABLE, GLFW_FALSE);
+     devices.window = glfwCreateWindow (size.x, size.y, "Hello World", NULL, NULL);
+     if (! devices.window)
      {
           glfwTerminate ( );
           exit (-1);
      }
-     glfwMakeContextCurrent (window);
-     return window;
+     glfwMakeContextCurrent (devices.window);
+
+     VkInstanceCreateInfo info =
+          {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+           .pNext = NULL,
+           .flags = 0,
+           .pApplicationInfo = NULL,
+           .enabledLayerCount = 0,
+           .ppEnabledLayerNames = NULL,
+           .enabledExtensionCount = 0,
+           .ppEnabledExtensionNames = NULL,
+          };
+     if (vkCreateInstance(&info, NULL, &devices.vulkan)) die ( );
+
+     return devices;
 }
 
-int leave (GLFWwindow * window)
+int leave (const struct devices devices)
 {
-     glfwDestroyWindow (window);
+     glfwDestroyWindow (devices.window);
      glfwTerminate ( );
      return 0;
 }
 
-void mainLoop (GLFWwindow * window)
+void mainLoop (const struct devices devices)
 {
-     glfwSwapBuffers (window);
+     glfwSwapBuffers (devices.window);
      glfwPollEvents ( );
 }
 
 int main (void)
 {
      const struct point size = {.x = 800, .y = 600};
-     GLFWwindow * window;
-     window = initializeWindow (size);
-     while (! glfwWindowShouldClose (window)) mainLoop (window);
-     return leave (window);
+     const struct devices devices = enter (size);
+     while (! glfwWindowShouldClose (devices.window)) mainLoop (devices);
+     return leave (devices);
 }
