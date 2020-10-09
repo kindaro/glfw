@@ -18,8 +18,9 @@ GLFWwindow * initializeWindow (const struct point size)
      return window;
 }
 
-int leave ( )
+int leave (GLFWwindow * window)
 {
+     glfwDestroyWindow (window);
      glfwTerminate ( );
      return 0;
 }
@@ -36,5 +37,5 @@ int main (void)
      GLFWwindow * window;
      window = initializeWindow (size);
      while (! glfwWindowShouldClose (window)) mainLoop (window);
-     return leave ( );
+     return leave (window);
 }
