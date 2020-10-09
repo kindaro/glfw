@@ -6,10 +6,13 @@
 struct point {int x; int y;};
 struct devices {GLFWwindow * window; VkInstance vulkan;};
 
-void die (void)
+void try (int code, const char * location)
 {
-     fprintf (stderr, "An error occured");
-     exit (-1);
+     if (code)
+     {
+          fprintf (stderr, "Error %d in %s!\n", code, location);
+          exit (-1);
+     }
 }
 
 const struct devices enter (const struct point size)
@@ -36,7 +39,8 @@ const struct devices enter (const struct point size)
            .enabledExtensionCount = 0,
            .ppEnabledExtensionNames = NULL,
           };
-     if (vkCreateInstance(&info, NULL, &devices.vulkan)) die ( );
+     info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions (&info.enabledExtensionCount);
+     try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
 
      return devices;
 }
