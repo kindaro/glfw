@@ -91,14 +91,15 @@ const struct devices enter (const struct point size)
      glfwMakeContextCurrent (devices.window);
 
      unsigned int enabledExtensionCount;
-     const char ** enabledExtensionNames = glfwGetRequiredInstanceExtensions (&enabledExtensionCount);
+     char const * const * enabledExtensionNames = glfwGetRequiredInstanceExtensions (&enabledExtensionCount);
+     char const * const layers [1] = {"VK_LAYER_KHRONOS_validation"};
      const VkInstanceCreateInfo info =
           {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
            .pNext = NULL,
            .flags = 0,
            .pApplicationInfo = NULL,
-           .enabledLayerCount = 0,
-           .ppEnabledLayerNames = NULL,
+           .enabledLayerCount = 1,
+           .ppEnabledLayerNames = layers,
            .enabledExtensionCount = enabledExtensionCount,
            .ppEnabledExtensionNames = enabledExtensionNames,
           };
