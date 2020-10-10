@@ -114,6 +114,7 @@ const struct devices enter (const struct point size)
 
 int leave (const struct devices devices)
 {
+     vkDestroySurfaceKHR (devices.vulkan, devices.surface, NULL);
      vkDestroyDevice (devices.logic, NULL);
      vkDestroyInstance (devices.vulkan, NULL);
      glfwDestroyWindow (devices.window);
