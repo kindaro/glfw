@@ -7,6 +7,7 @@ struct point {int x; int y;};
 struct devices
 {
      GLFWwindow * window;
+     GLFWmonitor * screen;
      VkInstance vulkan;
      VkSurfaceKHR surface;
      VkPhysicalDevice card;
@@ -76,13 +77,15 @@ void getLogicAndQueue (VkPhysicalDevice card, VkDevice logic, VkQueue queue)
      vkGetDeviceQueue (logic, queueFamilyIndex, 0, &queue);
 }
 
-const struct devices enter (const struct point size)
+const struct devices enter ( )
 {
      struct devices devices = { };
      if (! glfwInit ( )) exit (-1);
      glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API);
      glfwWindowHint (GLFW_RESIZABLE, GLFW_FALSE);
-     devices.window = glfwCreateWindow (size.x, size.y, "Hello World", NULL, NULL);
+     devices.screen = glfwGetPrimaryMonitor ( );
+     const GLFWvidmode* mode = glfwGetVideoMode (devices.screen);
+     devices.window = glfwCreateWindow (mode->width, mode->height, "Hello World", devices.screen, NULL);
      if (! devices.window)
      {
           glfwTerminate ( );
@@ -128,8 +131,7 @@ void mainLoop (const struct devices devices)
 
 int main (void)
 {
-     const struct point size = {.x = 800, .y = 600};
-     const struct devices devices = enter (size);
+     const struct devices devices = enter ( );
      while (! glfwWindowShouldClose (devices.window)) mainLoop (devices);
      return leave (devices);
 }
