@@ -58,6 +58,7 @@ const struct devices enter (const struct point size)
 
 int leave (const struct devices devices)
 {
+     vkDestroyInstance (devices.vulkan, NULL);
      glfwDestroyWindow (devices.window);
      glfwTerminate ( );
      return 0;
