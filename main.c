@@ -12,6 +12,7 @@ struct devices
      VkPhysicalDevice card;
      VkDevice logic;
      VkQueue queue;
+     VkSwapchainKHR chain;
 };
 
 void try (int code, const char * location)
@@ -40,7 +41,7 @@ VkPhysicalDevice getSomePhysicalDevice (VkInstance vulkan)
      return cards[0];
 }
 
-void getLogicAndQueue (VkPhysicalDevice card, VkDevice logic, VkQueue queue)
+void getLogicAndQueue (VkPhysicalDevice card, VkSurfaceKHR surface, VkDevice * logic, VkQueue * queue)
 {
      unsigned int numberOfAvailableQueueFamilies;
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
@@ -60,6 +61,7 @@ void getLogicAndQueue (VkPhysicalDevice card, VkDevice logic, VkQueue queue)
            .queueCount = 1,
            .pQueuePriorities = &priority
           };
+     char const * const extensions[1] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
      const VkDeviceCreateInfo deviceCreateInfo =
           {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
            .pNext = NULL,
@@ -68,12 +70,56 @@ void getLogicAndQueue (VkPhysicalDevice card, VkDevice logic, VkQueue queue)
            .pQueueCreateInfos = &queueCreateInfo,
            .enabledLayerCount = 0,
            .ppEnabledLayerNames = NULL,
-           .enabledExtensionCount = 0,
-           .ppEnabledExtensionNames = NULL,
+           .enabledExtensionCount = 1,
+           .ppEnabledExtensionNames = extensions,
            .pEnabledFeatures = NULL
           };
-     try (vkCreateDevice (card, &deviceCreateInfo, NULL, &logic), "Vulkan logical device initialization");
-     vkGetDeviceQueue (logic, queueFamilyIndex, 0, &queue);
+     try (vkCreateDevice (card, &deviceCreateInfo, NULL, logic), "Vulkan logical device initialization");
+     vkGetDeviceQueue (* logic, queueFamilyIndex, 0, queue);
+     VkBool32 isSurfaceSupported;
+     try (vkGetPhysicalDeviceSurfaceSupportKHR (card, queueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
+     try (isSurfaceSupported == VK_FALSE, "Vulkan surface not supported by queue family");
+}
+
+VkSwapchainKHR getSwapchain (VkPhysicalDevice card, VkDevice logic, VkSurfaceKHR surface, const struct point size)
+{
+     VkSurfaceCapabilitiesKHR capabilities;
+     try (vkGetPhysicalDeviceSurfaceCapabilitiesKHR (card, surface, &capabilities), "Vulkan surface capabilities query");
+     unsigned int numberOfFormats;
+     try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, NULL), "Vulkan surface formats number query");
+     VkSurfaceFormatKHR formats [numberOfFormats];
+     try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, formats), "Vulkan surface formats query");
+     VkSurfaceFormatKHR format = formats [1];
+     unsigned int numberOfPresentationModes;
+     try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, NULL), "Vulkan surface presentationModes number query");
+     VkPresentModeKHR presentationModes [numberOfPresentationModes];
+     try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, presentationModes), "Vulkan surface presentationModes query");
+     VkPresentModeKHR presentationMode = presentationModes [0];
+     printf ("Smallest extent: %x, %x.\n", capabilities.minImageExtent.width, capabilities.minImageExtent.height);
+     printf ("Largest extent: %x, %x.\n", capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
+     const VkSwapchainCreateInfoKHR info =
+          {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+           .pNext = NULL,
+           .flags = 0,
+           .surface = surface,
+           .minImageCount = capabilities.minImageCount + 1,
+           .imageFormat = format.format,
+           .imageColorSpace = format.colorSpace,
+           .imageExtent = capabilities.currentExtent,
+           .imageArrayLayers = 1,
+           .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+           .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+           .queueFamilyIndexCount = 0,
+           .pQueueFamilyIndices = NULL,
+           .preTransform = capabilities.currentTransform,
+           .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+           .presentMode = presentationMode,
+           .clipped = VK_TRUE,
+           .oldSwapchain = VK_NULL_HANDLE,
+          };
+     VkSwapchainKHR chain;
+     try (vkCreateSwapchainKHR (logic, &info, NULL, &chain), "Vulkan swapchain acquisition");
+     return chain;
 }
 
 const struct devices enter (const struct point size)
@@ -108,7 +154,8 @@ const struct devices enter (const struct point size)
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
      devices.card = getSomePhysicalDevice (devices.vulkan);
-     getLogicAndQueue (devices.card, devices.logic, devices.queue);
+     getLogicAndQueue (devices.card, devices.surface, &devices.logic, &devices.queue);
+     devices.chain = getSwapchain (devices.card, devices.logic, devices.surface, size);
      return devices;
 }
 
