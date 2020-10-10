@@ -22,6 +22,12 @@ void checkGlfwError (const char * location)
      if (code) printf ("GLFW error %X, %s in %s.\n", code, message, location);
 }
 
+VkResult getSomePhysicalDevice (VkInstance vulkan, VkPhysicalDevice * card)
+{
+     unsigned int numberOfRequiredDevices = 1;
+     return vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, card);
+}
+
 const struct devices enter (const struct point size)
 {
      struct devices devices = { };
@@ -51,8 +57,7 @@ const struct devices enter (const struct point size)
      for (int i = info.enabledExtensionCount - 1; i != 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
-     unsigned int numberOfRequiredDevices = 1;
-     try (vkEnumeratePhysicalDevices (devices.vulkan, &numberOfRequiredDevices, devices.card), "Vulkan physical device request");
+     try (getSomePhysicalDevice (devices.vulkan, devices.card), "Vulkan physical device request");
      return devices;
 }
 
