@@ -4,7 +4,15 @@
 #include <GLFW/glfw3.h>
 
 struct point {int x; int y;};
-struct devices {GLFWwindow * window; VkInstance vulkan; VkSurfaceKHR surface; VkPhysicalDevice * card;};
+struct devices
+{
+     GLFWwindow * window;
+     VkInstance vulkan;
+     VkSurfaceKHR surface;
+     VkPhysicalDevice card;
+     VkDevice logic;
+     VkQueue queue;
+};
 
 void try (int code, const char * location)
 {
@@ -22,10 +30,50 @@ void checkGlfwError (const char * location)
      if (code) printf ("GLFW error %X, %s in %s.\n", code, message, location);
 }
 
-VkResult getSomePhysicalDevice (VkInstance vulkan, VkPhysicalDevice * card)
+VkPhysicalDevice getSomePhysicalDevice (VkInstance vulkan)
 {
-     unsigned int numberOfRequiredDevices = 1;
-     return vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, card);
+     unsigned int numberOfRequiredDevices;
+     try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, NULL), "Vulkan physical device count");
+     try (numberOfRequiredDevices == 0, "No devices at all");
+     VkPhysicalDevice cards [numberOfRequiredDevices];
+     try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, cards), "Vulkan physical device acquisition");
+     return cards[0];
+}
+
+void getLogicAndQueue (VkPhysicalDevice card, VkDevice logic, VkQueue queue)
+{
+     unsigned int numberOfAvailableQueueFamilies;
+     vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
+     VkQueueFamilyProperties queueFamilies [numberOfAvailableQueueFamilies];
+     vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, queueFamilies);
+     int queueFamilyIndex = -1;
+     for (unsigned int i = numberOfAvailableQueueFamilies - 1; i >= 0; i--)
+          if (queueFamilies [i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+               {queueFamilyIndex = i; break;}
+     try (queueFamilyIndex == -1, "search for a queue");
+     float priority = 1;
+     const VkDeviceQueueCreateInfo queueCreateInfo =
+          {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+           .pNext = NULL,
+           .flags = 0,
+           .queueFamilyIndex = queueFamilyIndex,
+           .queueCount = 1,
+           .pQueuePriorities = &priority
+          };
+     const VkDeviceCreateInfo deviceCreateInfo =
+          {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+           .pNext = NULL,
+           .flags = 0,
+           .queueCreateInfoCount = 1,
+           .pQueueCreateInfos = &queueCreateInfo,
+           .enabledLayerCount = 0,
+           .ppEnabledLayerNames = NULL,
+           .enabledExtensionCount = 0,
+           .ppEnabledExtensionNames = NULL,
+           .pEnabledFeatures = NULL
+          };
+     try (vkCreateDevice (card, &deviceCreateInfo, NULL, &logic), "Vulkan logical device initialization");
+     vkGetDeviceQueue (logic, queueFamilyIndex, 0, &queue);
 }
 
 const struct devices enter (const struct point size)
@@ -54,15 +102,17 @@ const struct devices enter (const struct point size)
           };
      info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions (&info.enabledExtensionCount);
      checkGlfwError ("Query Vulkan extensions");
-     for (int i = info.enabledExtensionCount - 1; i != 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
+     for (int i = info.enabledExtensionCount - 1; i >= 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
-     try (getSomePhysicalDevice (devices.vulkan, devices.card), "Vulkan physical device request");
+     devices.card = getSomePhysicalDevice (devices.vulkan);
+     getLogicAndQueue (devices.card, devices.logic, devices.queue);
      return devices;
 }
 
 int leave (const struct devices devices)
 {
+     vkDestroyDevice (devices.logic, NULL);
      vkDestroyInstance (devices.vulkan, NULL);
      glfwDestroyWindow (devices.window);
      glfwTerminate ( );
