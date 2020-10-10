@@ -90,17 +90,18 @@ const struct devices enter (const struct point size)
      }
      glfwMakeContextCurrent (devices.window);
 
-     VkInstanceCreateInfo info =
+     unsigned int enabledExtensionCount;
+     const char ** enabledExtensionNames = glfwGetRequiredInstanceExtensions (&enabledExtensionCount);
+     const VkInstanceCreateInfo info =
           {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
            .pNext = NULL,
            .flags = 0,
            .pApplicationInfo = NULL,
            .enabledLayerCount = 0,
            .ppEnabledLayerNames = NULL,
-           .enabledExtensionCount = 0,
-           .ppEnabledExtensionNames = NULL,
+           .enabledExtensionCount = enabledExtensionCount,
+           .ppEnabledExtensionNames = enabledExtensionNames,
           };
-     info.ppEnabledExtensionNames = glfwGetRequiredInstanceExtensions (&info.enabledExtensionCount);
      checkGlfwError ("Query Vulkan extensions");
      for (int i = info.enabledExtensionCount - 1; i >= 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
      try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
