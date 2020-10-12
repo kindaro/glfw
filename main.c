@@ -52,33 +52,37 @@ void getLogicAndQueue (VkPhysicalDevice card, VkSurfaceKHR surface, VkDevice * l
           if (queueFamilies [i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
                {queueFamilyIndex = i; break;}
      try (queueFamilyIndex == -1, "search for a queue");
-     float priority = 1;
-     const VkDeviceQueueCreateInfo queueCreateInfo =
-          {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-           .pNext = NULL,
-           .flags = 0,
-           .queueFamilyIndex = queueFamilyIndex,
-           .queueCount = 1,
-           .pQueuePriorities = &priority
-          };
-     char const * const extensions[1] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-     const VkDeviceCreateInfo deviceCreateInfo =
-          {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-           .pNext = NULL,
-           .flags = 0,
-           .queueCreateInfoCount = 1,
-           .pQueueCreateInfos = &queueCreateInfo,
-           .enabledLayerCount = 0,
-           .ppEnabledLayerNames = NULL,
-           .enabledExtensionCount = 1,
-           .ppEnabledExtensionNames = extensions,
-           .pEnabledFeatures = NULL
-          };
-     try (vkCreateDevice (card, &deviceCreateInfo, NULL, logic), "Vulkan logical device initialization");
+     {
+          float priority = 1;
+          const VkDeviceQueueCreateInfo queueCreateInfo =
+               {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .queueFamilyIndex = queueFamilyIndex,
+                .queueCount = 1,
+                .pQueuePriorities = &priority
+               };
+          char const * const extensions[1] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+          const VkDeviceCreateInfo deviceCreateInfo =
+               {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .queueCreateInfoCount = 1,
+                .pQueueCreateInfos = &queueCreateInfo,
+                .enabledLayerCount = 0,
+                .ppEnabledLayerNames = NULL,
+                .enabledExtensionCount = 1,
+                .ppEnabledExtensionNames = extensions,
+                .pEnabledFeatures = NULL
+               };
+          try (vkCreateDevice (card, &deviceCreateInfo, NULL, logic), "Vulkan logical device initialization");
+     }
      vkGetDeviceQueue (* logic, queueFamilyIndex, 0, queue);
-     VkBool32 isSurfaceSupported;
-     try (vkGetPhysicalDeviceSurfaceSupportKHR (card, queueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
-     try (isSurfaceSupported == VK_FALSE, "Vulkan surface not supported by queue family");
+     {
+          VkBool32 isSurfaceSupported;
+          try (vkGetPhysicalDeviceSurfaceSupportKHR (card, queueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
+          try (isSurfaceSupported == VK_FALSE, "Vulkan surface not supported by queue family");
+     }
 }
 
 VkSwapchainKHR getSwapchain (VkPhysicalDevice card, VkDevice logic, VkSurfaceKHR surface, const struct point size)
@@ -97,28 +101,30 @@ VkSwapchainKHR getSwapchain (VkPhysicalDevice card, VkDevice logic, VkSurfaceKHR
      VkPresentModeKHR presentationMode = presentationModes [0];
      printf ("Smallest extent: %x, %x.\n", capabilities.minImageExtent.width, capabilities.minImageExtent.height);
      printf ("Largest extent: %x, %x.\n", capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
-     const VkSwapchainCreateInfoKHR info =
-          {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-           .pNext = NULL,
-           .flags = 0,
-           .surface = surface,
-           .minImageCount = capabilities.minImageCount + 1,
-           .imageFormat = format.format,
-           .imageColorSpace = format.colorSpace,
-           .imageExtent = capabilities.minImageExtent,
-           .imageArrayLayers = 1,
-           .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-           .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-           .queueFamilyIndexCount = 0,
-           .pQueueFamilyIndices = NULL,
-           .preTransform = capabilities.currentTransform,
-           .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-           .presentMode = presentationMode,
-           .clipped = VK_TRUE,
-           .oldSwapchain = VK_NULL_HANDLE,
-          };
      VkSwapchainKHR chain;
-     try (vkCreateSwapchainKHR (logic, &info, NULL, &chain), "Vulkan swapchain acquisition");
+     {
+          const VkSwapchainCreateInfoKHR info =
+               {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+                .pNext = NULL,
+                .flags = 0,
+                .surface = surface,
+                .minImageCount = capabilities.minImageCount + 1,
+                .imageFormat = format.format,
+                .imageColorSpace = format.colorSpace,
+                .imageExtent = capabilities.minImageExtent,
+                .imageArrayLayers = 1,
+                .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices = NULL,
+                .preTransform = capabilities.currentTransform,
+                .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                .presentMode = presentationMode,
+                .clipped = VK_TRUE,
+                .oldSwapchain = VK_NULL_HANDLE,
+               };
+          try (vkCreateSwapchainKHR (logic, &info, NULL, &chain), "Vulkan swapchain acquisition");
+     }
      return chain;
 }
 
@@ -136,22 +142,24 @@ const struct devices enter (const struct point size)
      }
      glfwMakeContextCurrent (devices.window);
 
-     unsigned int enabledExtensionCount;
-     char const * const * enabledExtensionNames = glfwGetRequiredInstanceExtensions (&enabledExtensionCount);
-     char const * const layers [1] = {"VK_LAYER_KHRONOS_validation"};
-     const VkInstanceCreateInfo info =
-          {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-           .pNext = NULL,
-           .flags = 0,
-           .pApplicationInfo = NULL,
-           .enabledLayerCount = 1,
-           .ppEnabledLayerNames = layers,
-           .enabledExtensionCount = enabledExtensionCount,
-           .ppEnabledExtensionNames = enabledExtensionNames,
-          };
-     checkGlfwError ("Query Vulkan extensions");
-     for (int i = info.enabledExtensionCount - 1; i >= 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
-     try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
+     {
+          unsigned int enabledExtensionCount;
+          char const * const * enabledExtensionNames = glfwGetRequiredInstanceExtensions (&enabledExtensionCount);
+          char const * const layers [1] = {"VK_LAYER_KHRONOS_validation"};
+          const VkInstanceCreateInfo info =
+               {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .pApplicationInfo = NULL,
+                .enabledLayerCount = 1,
+                .ppEnabledLayerNames = layers,
+                .enabledExtensionCount = enabledExtensionCount,
+                .ppEnabledExtensionNames = enabledExtensionNames,
+               };
+          checkGlfwError ("Query Vulkan extensions");
+          for (int i = info.enabledExtensionCount - 1; i >= 0; i--) printf ("Required extension: %s.\n", info.ppEnabledExtensionNames [i]);
+          try (vkCreateInstance(&info, NULL, &devices.vulkan), "Vulkan initialization");
+     }
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
      devices.card = getSomePhysicalDevice (devices.vulkan);
      getLogicAndQueue (devices.card, devices.surface, &devices.logic, &devices.queue);
