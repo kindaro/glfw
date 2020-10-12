@@ -105,7 +105,7 @@ VkSwapchainKHR getSwapchain (VkPhysicalDevice card, VkDevice logic, VkSurfaceKHR
            .minImageCount = capabilities.minImageCount + 1,
            .imageFormat = format.format,
            .imageColorSpace = format.colorSpace,
-           .imageExtent = capabilities.currentExtent,
+           .imageExtent = capabilities.minImageExtent,
            .imageArrayLayers = 1,
            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
            .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
