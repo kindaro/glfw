@@ -163,6 +163,7 @@ int leave (const struct devices devices)
 {
      vkDestroySwapchainKHR (devices.logic, devices.chain, NULL);
      vkDestroySurfaceKHR (devices.vulkan, devices.surface, NULL);
+     try (vkDeviceWaitIdle (devices.logic), "waiting for device to finish work");
      vkDestroyDevice (devices.logic, NULL);
      vkDestroyInstance (devices.vulkan, NULL);
      glfwDestroyWindow (devices.window);
