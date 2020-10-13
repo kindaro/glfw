@@ -15,7 +15,7 @@ struct devices
      VkSwapchainKHR chain;
 };
 
-void try (int code, const char * location)
+void try (int const code, char const * const location)
 {
      if (code)
      {
@@ -24,14 +24,14 @@ void try (int code, const char * location)
      }
 }
 
-void checkGlfwError (const char * location)
+void checkGlfwError (char const * const location)
 {
      const char * message;
      const int code = glfwGetError (&message);
      if (code) printf ("GLFW error %X, %s in %s.\n", code, message, location);
 }
 
-VkPhysicalDevice getSomePhysicalDevice (VkInstance vulkan)
+VkPhysicalDevice getSomePhysicalDevice (VkInstance const vulkan)
 {
      unsigned int numberOfRequiredDevices;
      try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, NULL), "Vulkan physical device count");
@@ -41,7 +41,7 @@ VkPhysicalDevice getSomePhysicalDevice (VkInstance vulkan)
      return cards[0];
 }
 
-void getLogicAndQueue (VkPhysicalDevice card, VkSurfaceKHR surface, VkDevice * logic, VkQueue * queue)
+void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const logic, VkQueue * const queue)
 {
      unsigned int numberOfAvailableQueueFamilies;
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
@@ -85,7 +85,7 @@ void getLogicAndQueue (VkPhysicalDevice card, VkSurfaceKHR surface, VkDevice * l
      }
 }
 
-VkSwapchainKHR getSwapchain (VkPhysicalDevice card, VkDevice logic, VkSurfaceKHR surface, const struct point size)
+VkSwapchainKHR getSwapchain (VkPhysicalDevice const card, VkDevice const logic, VkSurfaceKHR const surface, struct point const size)
 {
      VkSurfaceCapabilitiesKHR capabilities;
      try (vkGetPhysicalDeviceSurfaceCapabilitiesKHR (card, surface, &capabilities), "Vulkan surface capabilities query");
