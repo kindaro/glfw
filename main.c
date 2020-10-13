@@ -12,6 +12,7 @@ struct devices
      VkPhysicalDevice card;
      VkDevice logic;
      VkQueue queue;
+     unsigned int queueFamilyIndex;
      VkSwapchainKHR chain;
 };
 
@@ -41,24 +42,26 @@ VkPhysicalDevice getSomePhysicalDevice (VkInstance const vulkan)
      return cards[0];
 }
 
-void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const logic, VkQueue * const queue)
+void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const logic, VkQueue * const queue, unsigned int * const pointerToQueueFamilyIndex)
 {
      unsigned int numberOfAvailableQueueFamilies;
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
      VkQueueFamilyProperties queueFamilies [numberOfAvailableQueueFamilies];
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, queueFamilies);
-     int queueFamilyIndex = -1;
-     for (unsigned int i = numberOfAvailableQueueFamilies - 1; i >= 0; i--)
-          if (queueFamilies [i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-               {queueFamilyIndex = i; break;}
-     try (queueFamilyIndex == -1, "search for a queue");
+     {
+          * pointerToQueueFamilyIndex = -1;
+          for (unsigned int i = numberOfAvailableQueueFamilies - 1; i >= 0; i--)
+               if (queueFamilies [i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+               {* pointerToQueueFamilyIndex = i; break;}
+          try (* pointerToQueueFamilyIndex == -1, "search for a queue");
+     }
      {
           float priority = 1;
           const VkDeviceQueueCreateInfo queueCreateInfo =
                {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                 .pNext = NULL,
                 .flags = 0,
-                .queueFamilyIndex = queueFamilyIndex,
+                .queueFamilyIndex = * pointerToQueueFamilyIndex,
                 .queueCount = 1,
                 .pQueuePriorities = &priority
                };
@@ -77,10 +80,10 @@ void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, 
                };
           try (vkCreateDevice (card, &deviceCreateInfo, NULL, logic), "Vulkan logical device initialization");
      }
-     vkGetDeviceQueue (* logic, queueFamilyIndex, 0, queue);
+     vkGetDeviceQueue (* logic, * pointerToQueueFamilyIndex, 0, queue);
      {
           VkBool32 isSurfaceSupported;
-          try (vkGetPhysicalDeviceSurfaceSupportKHR (card, queueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
+          try (vkGetPhysicalDeviceSurfaceSupportKHR (card, * pointerToQueueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
           try (isSurfaceSupported == VK_FALSE, "Vulkan surface not supported by queue family");
      }
 }
@@ -162,7 +165,7 @@ const struct devices enter (const struct point size)
      }
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
      devices.card = getSomePhysicalDevice (devices.vulkan);
-     getLogicAndQueue (devices.card, devices.surface, &devices.logic, &devices.queue);
+     getLogicAndQueue (devices.card, devices.surface, &devices.logic, &devices.queue, &devices.queueFamilyIndex);
      devices.chain = getSwapchain (devices.card, devices.logic, devices.surface, size);
      return devices;
 }
