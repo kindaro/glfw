@@ -16,20 +16,20 @@ struct devices
      VkSwapchainKHR chain;
 };
 
-void try (int const code, char const * const location)
+void try (int const code, char const * const pointerToLocation)
 {
      if (code)
      {
-          fprintf (stderr, "Error %d in %s!\n", code, location);
+          fprintf (stderr, "Error %d in %s!\n", code, pointerToLocation);
           exit (-1);
      }
 }
 
-void checkGlfwError (char const * const location)
+void checkGlfwError (char const * const pointerToLocation)
 {
      const char * message;
      const int code = glfwGetError (&message);
-     if (code) printf ("GLFW error %X, %s in %s.\n", code, message, location);
+     if (code) printf ("GLFW error %X, %s in %s.\n", code, message, pointerToLocation);
 }
 
 VkPhysicalDevice getSomePhysicalDevice (VkInstance const vulkan)
@@ -42,7 +42,7 @@ VkPhysicalDevice getSomePhysicalDevice (VkInstance const vulkan)
      return cards[0];
 }
 
-void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const logic, VkQueue * const queue, unsigned int * const pointerToQueueFamilyIndex)
+void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const pointerToLogic, VkQueue * const pointerToQueue, unsigned int * const pointerToQueueFamilyIndex)
 {
      unsigned int numberOfAvailableQueueFamilies;
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
@@ -78,9 +78,9 @@ void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, 
                 .ppEnabledExtensionNames = extensions,
                 .pEnabledFeatures = NULL
                };
-          try (vkCreateDevice (card, &deviceCreateInfo, NULL, logic), "Vulkan logical device initialization");
+          try (vkCreateDevice (card, &deviceCreateInfo, NULL, pointerToLogic), "Vulkan logical device initialization");
      }
-     vkGetDeviceQueue (* logic, * pointerToQueueFamilyIndex, 0, queue);
+     vkGetDeviceQueue (* pointerToLogic, * pointerToQueueFamilyIndex, 0, pointerToQueue);
      {
           VkBool32 isSurfaceSupported;
           try (vkGetPhysicalDeviceSurfaceSupportKHR (card, * pointerToQueueFamilyIndex, surface, &isSurfaceSupported), "Vulkan surface support check");
