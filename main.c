@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 struct point {int x; int y;};
+struct images {unsigned int const count; VkImage * const images; VkImageView * const views;};
 struct devices
 {
      GLFWwindow * window;
@@ -13,7 +14,11 @@ struct devices
      VkDevice logic;
      VkQueue queue;
      unsigned int queueFamilyIndex;
+     VkSurfaceFormatKHR format;
      VkSwapchainKHR chain;
+     VkCommandPool pool;
+     VkCommandBuffer buffer;
+     struct images * pointerToImages;
 };
 
 void try (int const code, char const * const pointerToLocation)
@@ -88,15 +93,20 @@ void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, 
      }
 }
 
-VkSwapchainKHR getSwapchain (VkPhysicalDevice const card, VkDevice const logic, VkSurfaceKHR const surface, struct point const size)
+VkSurfaceFormatKHR getFormat (VkPhysicalDevice const card, VkSurfaceKHR const surface)
 {
-     VkSurfaceCapabilitiesKHR capabilities;
-     try (vkGetPhysicalDeviceSurfaceCapabilitiesKHR (card, surface, &capabilities), "Vulkan surface capabilities query");
      unsigned int numberOfFormats;
      try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, NULL), "Vulkan surface formats number query");
      VkSurfaceFormatKHR formats [numberOfFormats];
      try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, formats), "Vulkan surface formats query");
      VkSurfaceFormatKHR format = formats [1];
+     return format;
+}
+
+VkSwapchainKHR getSwapchain (VkPhysicalDevice const card, VkDevice const logic, VkSurfaceKHR const surface, VkSurfaceFormatKHR const format, struct point const size)
+{
+     VkSurfaceCapabilitiesKHR capabilities;
+     try (vkGetPhysicalDeviceSurfaceCapabilitiesKHR (card, surface, &capabilities), "Vulkan surface capabilities query");
      unsigned int numberOfPresentationModes;
      try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, NULL), "Vulkan surface presentationModes number query");
      VkPresentModeKHR presentationModes [numberOfPresentationModes];
@@ -129,6 +139,74 @@ VkSwapchainKHR getSwapchain (VkPhysicalDevice const card, VkDevice const logic, 
           try (vkCreateSwapchainKHR (logic, &info, NULL, &chain), "Vulkan swapchain acquisition");
      }
      return chain;
+}
+
+struct images * getPointerToImages (VkDevice const logic, VkSwapchainKHR const swapchain, VkFormat const format)
+{
+     unsigned int count;
+     try (vkGetSwapchainImagesKHR (logic, swapchain, &count, NULL), "Get image count");
+     VkImage images [count];
+     try (vkGetSwapchainImagesKHR (logic, swapchain, &count, images), "Get images");
+     VkImageView views [count];
+     for (unsigned int i = count; i == 0; --i)
+     {
+          VkComponentMapping components =
+               {.r = VK_COMPONENT_SWIZZLE_R,
+                .g = VK_COMPONENT_SWIZZLE_G,
+                .b = VK_COMPONENT_SWIZZLE_B,
+                .a = VK_COMPONENT_SWIZZLE_A,
+               };
+          VkImageSubresourceRange subresourceRange =
+               {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+               };
+          VkImageViewCreateInfo info =
+               {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .image = images [i],
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = format,
+                .components = components,
+                subresourceRange = subresourceRange,
+               };
+          try (vkCreateImageView (logic, & info, NULL, & views [i]), "Creating image view");
+     }
+     return & (struct images){.count = count, .images = images};
+}
+
+VkCommandPool getPool (VkDevice const logic, unsigned int const queueFamilyIndex)
+{
+     VkCommandPool pool;
+     {
+          VkCommandPoolCreateInfo const info =
+               {.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .queueFamilyIndex = queueFamilyIndex,
+               };
+          try (vkCreateCommandPool (logic, &info, NULL, &pool), "Vulkan command pool acquisition");
+     }
+     return pool;
+}
+
+VkCommandBuffer getBuffer (VkDevice const logic, VkCommandPool const pool)
+{
+     VkCommandBuffer buffer;
+     {
+          VkCommandBufferAllocateInfo info =
+               {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .pNext = NULL,
+                .commandPool = pool,
+                .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                .commandBufferCount = 1,
+               };
+               try (vkAllocateCommandBuffers (logic, &info, &buffer), "Vulkan command buffer allocation");
+     }
+     return buffer;
 }
 
 const struct devices enter (const struct point size)
@@ -166,12 +244,18 @@ const struct devices enter (const struct point size)
      try (glfwCreateWindowSurface (devices.vulkan, devices.window, NULL, &devices.surface), "Vulkan surface initialization");
      devices.card = getSomePhysicalDevice (devices.vulkan);
      getLogicAndQueue (devices.card, devices.surface, &devices.logic, &devices.queue, &devices.queueFamilyIndex);
-     devices.chain = getSwapchain (devices.card, devices.logic, devices.surface, size);
+     devices.format = getFormat (devices.card, devices.surface);
+     devices.chain = getSwapchain (devices.card, devices.logic, devices.surface, devices.format, size);
+     devices.pool = getPool (devices.logic, devices.queueFamilyIndex);
+     devices.buffer = getBuffer (devices.logic, devices.pool);
+     devices.pointerToImages = getPointerToImages (devices.logic, devices.chain, devices.format.format);
+     printf ("Images in the swap chain: %d\n", devices.pointerToImages->count);
      return devices;
 }
 
 int leave (const struct devices devices)
 {
+     vkDestroyCommandPool (devices.logic, devices.pool, NULL);
      vkDestroySwapchainKHR (devices.logic, devices.chain, NULL);
      vkDestroySurfaceKHR (devices.vulkan, devices.surface, NULL);
      try (vkDeviceWaitIdle (devices.logic), "waiting for device to finish work");
@@ -186,6 +270,47 @@ void mainLoop (const struct devices devices)
 {
      glfwSwapBuffers (devices.window);
      glfwPollEvents ( );
+     unsigned int imageIndex;
+     try (vkAcquireNextImageKHR (devices.logic, devices.chain, -1, VK_NULL_HANDLE, VK_NULL_HANDLE, &imageIndex), "Acquiring next image");
+     unsigned int imageIndices [ ] = {imageIndex};
+     {
+          VkCommandBufferBeginInfo info =
+               {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .pNext = NULL,
+                .flags = 0,
+                .pInheritanceInfo = NULL,
+               };
+          try (vkBeginCommandBuffer (devices.buffer, &info), "Begin buffer");
+          try (vkEndCommandBuffer (devices.buffer), "End buffer");
+     }
+     {
+          VkSubmitInfo info =
+               {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .waitSemaphoreCount = 0,
+                .pWaitSemaphores = NULL,
+                .pWaitDstStageMask = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &devices.buffer,
+                .signalSemaphoreCount = 0,
+                .pSignalSemaphores = NULL,
+               };
+          try (vkQueueSubmit (devices.queue, 1, &info, VK_NULL_HANDLE), "Submission of the command buffer to the queue");
+     }
+     {
+          VkPresentInfoKHR info =
+               {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                .pNext= NULL,
+                .waitSemaphoreCount = 0,
+                .pWaitSemaphores = NULL,
+                .swapchainCount = 1,
+                .pSwapchains = &devices.chain,
+                .pImageIndices = imageIndices,
+                .pResults = NULL,
+               };
+          try (vkQueuePresentKHR (devices.queue, &info), "Presentation");
+     }
+     try (vkQueueWaitIdle (devices.queue), "Waiting for the queue to become idle");
 }
 
 int main (void)
