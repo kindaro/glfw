@@ -1,7 +1,9 @@
+#define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <time.h>
+#include <math.h>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_core.h>
@@ -131,10 +133,19 @@ VkSurfaceFormatKHR getFormat (VkPhysicalDevice const card, VkSurfaceKHR const su
 {
      unsigned int numberOfFormats;
      try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, NULL), "Vulkan surface formats number query");
-     VkSurfaceFormatKHR * pointerToFormats = xcalloc (numberOfFormats, sizeof (VkSurfaceFormatKHR));
-     try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, pointerToFormats), "Vulkan surface formats query");
-     VkSurfaceFormatKHR format = pointerToFormats [1];
-     free (pointerToFormats);
+     VkSurfaceFormatKHR format;
+     {
+          VkSurfaceFormatKHR * pointerToFormats = xcalloc (numberOfFormats, sizeof (VkSurfaceFormatKHR));
+          try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, pointerToFormats), "Vulkan surface formats query");
+          for (unsigned int i = 0; i < numberOfFormats; ++i)
+          {
+               VkFormatProperties formatProperties;
+               vkGetPhysicalDeviceFormatProperties (card, pointerToFormats [i].format, &formatProperties);
+               printf ("Format available: %u\n", pointerToFormats [i].format);
+          }
+          format = pointerToFormats [1];
+          free (pointerToFormats);
+     }
      return format;
 }
 
@@ -277,7 +288,7 @@ VkRenderPass getRenderPass (VkDevice const logic, VkFormat const format)
                {.flags = 0,
                 .format = format,
                 .samples = VK_SAMPLE_COUNT_1_BIT,
-                .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
                 .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                 .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                 .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -412,14 +423,15 @@ void mainLoop (const struct devices devices, struct point const size)
           try (vkBeginCommandBuffer (devices.buffer, &info), "Begin buffer");
           printf ("Framebuffer pointer: %p.\n", & devices.pointerToImages->frames [imageIndex]);
           {
+               VkClearValue clearValue = {.color = {.float32 = {fabsf ((float) (mainLoopCounter % 1000) - 500.0f) / 500, 0, 1 - fabsf ((float) (mainLoopCounter % 1000) - 500.0f) / 500, 1}}};
                VkRenderPassBeginInfo info =
                     {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                      .pNext = NULL,
                      .renderPass = devices.renderPass,
                      .framebuffer = devices.pointerToImages->frames [imageIndex],
                      .renderArea = (VkRect2D) {.offset.x = 0, .offset.y = 0, .extent.width = size.x, .extent.height = size.y},
-                     .clearValueCount = 0,
-                     .pClearValues = NULL,
+                     .clearValueCount = 1,
+                     .pClearValues = & clearValue,
                     };
                vkCmdBeginRenderPass (devices.buffer, & info, VK_SUBPASS_CONTENTS_INLINE);
                vkCmdEndRenderPass (devices.buffer);
@@ -454,7 +466,11 @@ void mainLoop (const struct devices devices, struct point const size)
           try (vkQueuePresentKHR (devices.queue, &info), "Presentation");
      }
      try (vkQueueWaitIdle (devices.queue), "Waiting for the queue to become idle");
-     sleep (1);
+     {
+          struct timespec timeToSleep = {.tv_sec = 0, .tv_nsec = 1 << 20};
+          nanosleep (&timeToSleep, NULL);
+     }
+     printf ("Main loop counter: %u.\n", mainLoopCounter);
      mainLoopCounter++;
 }
 
