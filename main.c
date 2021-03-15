@@ -362,6 +362,7 @@ int leave (const struct devices devices)
      free (devices.pointerToImages->images);
      free (devices.pointerToImages->views);
      free (devices.pointerToImages->frames);
+     free (devices.pointerToImages);
      vkDestroyCommandPool (devices.logic, devices.pool, NULL);
      vkDestroyRenderPass (devices.logic, devices.renderPass, NULL);
      vkDestroySwapchainKHR (devices.logic, devices.chain, NULL);
