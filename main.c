@@ -68,23 +68,31 @@ VkPhysicalDevice getSomePhysicalDevice (VkInstance const vulkan)
      unsigned int numberOfRequiredDevices;
      try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, NULL), "Vulkan physical device count");
      try (numberOfRequiredDevices == 0, "No devices at all");
-     VkPhysicalDevice cards [numberOfRequiredDevices];
-     try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, cards), "Vulkan physical device acquisition");
-     return cards[0];
+     VkPhysicalDevice * pointerToCards = xcalloc (numberOfRequiredDevices, sizeof (VkPhysicalDevice));
+     try (vkEnumeratePhysicalDevices (vulkan, &numberOfRequiredDevices, pointerToCards), "Vulkan physical device acquisition");
+     VkPhysicalDevice card = pointerToCards [0];
+     free (pointerToCards);
+     return card;
 }
 
 void getLogicAndQueue (VkPhysicalDevice const card, VkSurfaceKHR const surface, VkDevice * const pointerToLogic, VkQueue * const pointerToQueue, unsigned int * const pointerToQueueFamilyIndex)
 {
      unsigned int numberOfAvailableQueueFamilies;
      vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, NULL);
-     VkQueueFamilyProperties queueFamilies [numberOfAvailableQueueFamilies];
-     vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, queueFamilies);
      {
-          * pointerToQueueFamilyIndex = ~ (unsigned int) 0;
-          for (unsigned int i = 0; i < numberOfAvailableQueueFamilies; ++i)
-               if (queueFamilies [i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-               {* pointerToQueueFamilyIndex = i; break;}
-          try(*pointerToQueueFamilyIndex == ~ (unsigned int) 0, "search for a queue");
+          VkQueueFamilyProperties * pointerToQueueFamilies = xcalloc (numberOfAvailableQueueFamilies, sizeof (VkQueueFamilyProperties));
+          vkGetPhysicalDeviceQueueFamilyProperties (card, &numberOfAvailableQueueFamilies, pointerToQueueFamilies);
+          {
+               *pointerToQueueFamilyIndex = ~(unsigned int)0;
+               for (unsigned int i = 0; i < numberOfAvailableQueueFamilies; ++i)
+                    if (pointerToQueueFamilies [i].queueCount > 0 && pointerToQueueFamilies [i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                    {
+                         *pointerToQueueFamilyIndex = i;
+                         break;
+                    }
+               try (*pointerToQueueFamilyIndex == ~(unsigned int)0, "search for a queue");
+          }
+          free (pointerToQueueFamilies);
      }
      {
           float priority = 1;
@@ -123,9 +131,10 @@ VkSurfaceFormatKHR getFormat (VkPhysicalDevice const card, VkSurfaceKHR const su
 {
      unsigned int numberOfFormats;
      try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, NULL), "Vulkan surface formats number query");
-     VkSurfaceFormatKHR formats [numberOfFormats];
-     try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, formats), "Vulkan surface formats query");
-     VkSurfaceFormatKHR format = formats [1];
+     VkSurfaceFormatKHR * pointerToFormats = xcalloc (numberOfFormats, sizeof (VkSurfaceFormatKHR));
+     try (vkGetPhysicalDeviceSurfaceFormatsKHR (card, surface, &numberOfFormats, pointerToFormats), "Vulkan surface formats query");
+     VkSurfaceFormatKHR format = pointerToFormats [1];
+     free (pointerToFormats);
      return format;
 }
 
@@ -135,9 +144,10 @@ VkSwapchainKHR getSwapchain (VkPhysicalDevice const card, VkDevice const logic, 
      try (vkGetPhysicalDeviceSurfaceCapabilitiesKHR (card, surface, &capabilities), "Vulkan surface capabilities query");
      unsigned int numberOfPresentationModes;
      try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, NULL), "Vulkan surface presentationModes number query");
-     VkPresentModeKHR presentationModes [numberOfPresentationModes];
-     try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, presentationModes), "Vulkan surface presentationModes query");
-     VkPresentModeKHR presentationMode = presentationModes [0];
+     VkPresentModeKHR * pointerToPresentationModes = xcalloc (numberOfPresentationModes, sizeof (VkPresentModeKHR));
+     try (vkGetPhysicalDeviceSurfacePresentModesKHR (card, surface, &numberOfPresentationModes, pointerToPresentationModes), "Vulkan surface presentationModes query");
+     VkPresentModeKHR presentationMode = pointerToPresentationModes [0];
+     free (pointerToPresentationModes);
      printf ("Smallest extent: %x, %x.\n", capabilities.minImageExtent.width, capabilities.minImageExtent.height);
      printf ("Largest extent: %x, %x.\n", capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
      VkSwapchainKHR chain;
